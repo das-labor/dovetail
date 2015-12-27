@@ -35,49 +35,49 @@ imap_passwd = nil
 ip_address = nil
 
 parser = OptionParser.new do |opts|
-  opts.banner = "Usage: dovetail.rb [options]"
+	opts.banner = "Usage: dovetail.rb [options]"
 
-  opts.on(:REQUIRED, "-d", "--destination", "Destination e-mail address") do |v|
-    dest_address = v
-  end
-  opts.on(:REQUIRED, "-s", "--source", "Source e-mail address") do |v|
-    src_address = v
-  end
-  opts.on(:REQUIRED, "-i", "--imap-server", "IMAP server") do |v|
-    imap_host = v
-  end
-  opts.on(:REQUIRED, "-u", "--imap-user", "IMAP user") do |v|
-    imap_username = v
-  end
+	opts.on(:REQUIRED, "-d", "--destination", "Destination e-mail address") do |v|
+		dest_address = v
+	end
+	opts.on(:REQUIRED, "-s", "--source", "Source e-mail address") do |v|
+		src_address = v
+	end
+	opts.on(:REQUIRED, "-i", "--imap-server", "IMAP server") do |v|
+		imap_host = v
+	end
+	opts.on(:REQUIRED, "-u", "--imap-user", "IMAP user") do |v|
+		imap_username = v
+	end
 	opts.on(:REQUIRED, "-p", "--imap-password", "IMAP password") do |v|
-    imap_passwd = v
-  end
+		imap_passwd = v
+	end
 	opts.on(:REQUIRED, "-S", "--smtp-server", "SMTP server ") do |v|
-    smtp_host = v
-  end
- 	opts.on(:REQUIRED, "-U", "--smtp-user", "SMTP user") do |v|
-    smtp_username = v
-  end
+		smtp_host = v
+	end
+	opts.on(:REQUIRED, "-U", "--smtp-user", "SMTP user") do |v|
+		smtp_username = v
+	end
 	opts.on(:REQUIRED, "-P", "--smtp-password", "SMTP password") do |v|
-    smtp_passwd = v
-  end
+		smtp_passwd = v
+	end
 	opts.on(:REQUIRED, "-I", "--ip-address", "Local IP address") do |v|
-    ip_address = v
-  end
+		ip_address = v
+	end
 end
 
 parser.parse!
 
 if dest_address == nil or
-	 src_address == nil or
-	 imap_host == nil or
-	 imap_username == nil or
-	 imap_passwd == nil or
-	 smtp_host == nil or
-	 smtp_username == nil or
-	 smtp_passwd == nil or
-	 ip_address == nil
-then
+	src_address == nil or
+	imap_host == nil or
+	imap_username == nil or
+	imap_passwd == nil or
+	smtp_host == nil or
+	smtp_username == nil or
+	smtp_passwd == nil or
+	ip_address == nil
+	then
 	puts parser.to_s
 	exit
 end
@@ -102,19 +102,22 @@ sth = Thread.new do
 		begin
 			ip = PacketFu::IPHeader.new.read(raw)
 			puts "IP packet to " + ip.ip_daddr
-			b64 = Base64.encode64(raw)
-			p b64
+
+			pkt = MIME::Application.new(Base64.encode64(raw),"ip",{"version"=>"4","dilation"=>"1000","address"=>ip_address})
+			pkt.transfer_encoding = "base64"
+
+			mail = MIME::Mail.new(pkt)
+			mail.from = src_address
+			mail.sender = src_address
+			mail.to = dest_address
+			mail.subject = "Dovetail"
+			p mail
 
 			smtp = Net::SMTP.new(smtp_host, 587)
 			smtp.enable_starttls
 
 			smtp.start(Socket.gethostname, smtp_username, smtp_passwd, :plain) do |s|
-				now = DateTime.now.strftime("%a, %d %b %Y %T %z")
-				s.send_message(
-					"From: #{src_address}\nTo: #{dest_address}\nSubject: Dovetail Seq# #{seqnr.to_s}\nDate: #{now}\n\n#{b64}",
-					src_address,
-					dest_address
-				)
+				s.send_message(mail.to_s(),src_address,dest_address)
 			end
 
 			seqnr += 1
@@ -130,15 +133,15 @@ rth = Thread.new do
 
 	begin
 		imap = Net::IMAP.new(imap_host,{:port => 143})
-	p	imap.starttls
+		imap.starttls
 		imap.authenticate('PLAIN', imap_username, imap_passwd)
 		imap.select('INBOX')
 
 		loop do
 			imap.search(['SUBJECT','Dovetail','UNSEEN']).each do |message_id|
 				body = imap.fetch(message_id,'BODY[TEXT]')[0].attr['BODY[TEXT]']
-				p body
-				raw = Base64.decode64(body)
+				mail = MIME::Mail.new(body)
+				raw = Base64.decode64(mail.body.body)
 				ip = PacketFu::IPHeader.new.read(raw)
 				puts "IP packet from " + ip.ip_saddr
 
