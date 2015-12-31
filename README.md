@@ -13,8 +13,10 @@ dovetail does point-to-point connections. You will need two devices and two emai
 Each end needs to run the following command
 
 ```bash
-./dovetail --destination email1@host.org --source email2@host.org  --imap-server imap.host.org --imap-user email2 \
-	--imap-password 123456 --smtp-server smtp.host.org --smtp-user email2 --smtp-password 123456 --ip-address 10.42.0.1
+./dovetail --destination email1@host.org --source email2@host.org  \
+	--imap-server imap.host.org --imap-user email2 \
+	--imap-password 123456 --smtp-server smtp.host.org \
+	--smtp-user email2 --smtp-password 123456 --ip-address 10.42.0.1
 ```
 
 Please replace the respective params. source and destination email need to be swapped on both ends. user, server and password need to be adjusted. Obviously also the ip needs to be changed.
