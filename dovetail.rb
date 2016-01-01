@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 # Dovetail - The Bundesposcht client http://bundesposcht.de/
 # Copyright (C) 2015  Kai Michaelis
 #
